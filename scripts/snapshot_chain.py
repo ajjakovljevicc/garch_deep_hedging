@@ -1,12 +1,15 @@
 import datetime as dt
 import pathlib
 import sys
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import yfinance as yf
 
 TICKERS = ["^SPX", "SPY"]            
 OUT_DIR = pathlib.Path(__file__).resolve().parent.parent / "data" / "chains"
+EASTERN = ZoneInfo("America/New_York")
+WINDOW_START, WINDOW_END = dt.time(16, 15), dt.time(20, 0)
 
 
 def snapshot(ticker: str) -> pd.DataFrame:
@@ -27,7 +30,14 @@ def snapshot(ticker: str) -> pd.DataFrame:
 
 
 def main() -> int:
-    today = dt.date.today().isoformat()
+    now = dt.datetime.now(EASTERN)
+    in_window = now.weekday() < 5 and WINDOW_START <= now.time() <= WINDOW_END
+    if not in_window and "--force" not in sys.argv:
+        print(f"{now:%a %Y-%m-%d %H:%M} ET is outside the 4:15-8:00 window; not saving")
+        return 0
+
+    today = now.date().isoformat()
+
     failures = 0
     for ticker in TICKERS:
         folder = OUT_DIR / ticker.replace("^", "")
